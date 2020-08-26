@@ -31,14 +31,8 @@ class OpenMoveEvalFn:
 
             """
 
-        print(game.print_board())
-        print("my player: %s", game.get_active_players_queen())
-
         my_player_moves = game.get_player_moves(my_player)
         opp_moves = game.get_opponent_moves(my_player)
-
-        print("# of my moves: %s", len(my_player_moves))
-        print("# of opp moves: %s", len(opp_moves))
         number_of_moves = len(my_player_moves) - len(opp_moves)
         return number_of_moves
 
@@ -57,7 +51,7 @@ class CustomPlayer:
     You must finish and test this player to make sure it properly
     uses minimax and alpha-beta to return a good move."""
 
-    def __init__(self, search_depth=3, eval_fn=OpenMoveEvalFn()):
+    def __init__(self, search_depth=2, eval_fn=OpenMoveEvalFn()):
         """Initializes your player.
 
         if you find yourself with a superior eval function, update the default
@@ -114,8 +108,60 @@ def minimax(player, game, time_left, depth, my_turn=True):
         (tuple, int): best_move, val
     """
 
-    # TODO: finish this function!
+    def __minimax_helper__(player, projected_game, time_left, cur_depth, max_depth, my_turn):
+        """
+            Args:
+                player: same as minimax()
+                projected_game: game state if move in previous step was made
+                time_left: same as minimax()
+                cur_depth: current depth of search from root
+                max_depth: maximum depth searchable
+                my_turn: same as minimax()
+            Returns:
+                int: utility of this game state for AI i.e. utility of making this move if starting from root
+        """
+        node_utility = player.eval_fn.score(projected_game, player)
 
+        # If at maximum search depth, treat this node as a termination leaf and calculate utility
+        if cur_depth >= max_depth:
+            return node_utility
+
+        possible_actions = None
+        if my_turn:
+            possible_actions = projected_game.get_player_moves(player)
+        else:
+            possible_actions = projected_game.get_opponent_moves(player)
+        if len(possible_actions) == 0:
+            # Assumption here is that the game is over
+            return node_utility
+        utilities = []
+        for action in possible_actions:
+            new_projected_game, is_over, winner = projected_game.forecast_move(action)
+            if is_over:
+                utility = player.eval_fn.score(new_projected_game, player)
+                utilities.append(utility)
+            else:
+                utility = __minimax_helper__(player, new_projected_game, time_left, cur_depth+1, max_depth, not my_turn)
+                utilities.append(utility)
+
+        # Min or max the value depending on whether this is simulating AI turn or opponent turn
+        if my_turn:
+            return max(utilities)
+        else:
+            return min(utilities)
+
+    possible_actions = game.get_player_moves(player)
+    action_utility_list = []
+    for action in possible_actions:
+        new_projected_game, is_over, winner = game.forecast_move(action)
+        # TODO add end game check i.e. is is_over True then what?
+        utility = __minimax_helper__(player, new_projected_game, time_left, 1, depth, not my_turn)
+        action_utility_list.append((action, utility))
+
+    # Find move with highest utility value
+    from operator import itemgetter
+    best_move_utility_pair = max(action_utility_list, key=itemgetter(1))
+    return best_move_utility_pair[0], best_move_utility_pair[1]
 
 ######################################################################
 ########## DON'T WRITE ANY CODE OUTSIDE THE FUNCTION! ################
