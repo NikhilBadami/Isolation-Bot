@@ -8,7 +8,7 @@ import time
 from isolation import Board
 
 # Credits if any
-# 1)
+# 1) https://stackoverflow.com/questions/13145368/find-the-maximum-value-in-a-list-of-tuples-in-python # used as reference for python-max function
 # 2)
 # 3)
 
@@ -51,7 +51,7 @@ class CustomPlayer:
     You must finish and test this player to make sure it properly
     uses minimax and alpha-beta to return a good move."""
 
-    def __init__(self, search_depth=2, eval_fn=OpenMoveEvalFn()):
+    def __init__(self, search_depth=3, eval_fn=OpenMoveEvalFn()):
         """Initializes your player.
 
         if you find yourself with a superior eval function, update the default
@@ -92,6 +92,8 @@ class CustomPlayer:
 ###### IF YOU WANT TO CALL OR TEST IT CREATE A NEW CELL ###########
 ###################################################################
 
+from operator import itemgetter
+
 def minimax(player, game, time_left, depth, my_turn=True):
     """Implementation of the minimax algorithm.
     Args:
@@ -122,11 +124,15 @@ def minimax(player, game, time_left, depth, my_turn=True):
         """
         node_utility = player.eval_fn.score(projected_game, player)
 
+        # Stop evaluating and immediately return if less than 6.7ms remains
+        TIMEOUT_THRESHOLD = 6.7
+
         # If at maximum search depth, treat this node as a termination leaf and calculate utility
-        if cur_depth >= max_depth:
+        if cur_depth >= max_depth or time_left() < TIMEOUT_THRESHOLD:
             return node_utility
 
         possible_actions = None
+        # Check AI moves or opponents moves depending on whose turn it is
         if my_turn:
             possible_actions = projected_game.get_player_moves(player)
         else:
@@ -134,32 +140,53 @@ def minimax(player, game, time_left, depth, my_turn=True):
         if len(possible_actions) == 0:
             # Assumption here is that the game is over
             return node_utility
-        utilities = []
+
+        best_utility = None
         for action in possible_actions:
+            if time_left() < TIMEOUT_THRESHOLD:
+                if best_utility is None:
+                    best_utility = node_utility
+                break
             new_projected_game, is_over, winner = projected_game.forecast_move(action)
             if is_over:
                 utility = player.eval_fn.score(new_projected_game, player)
-                utilities.append(utility)
+                best_utility = __utility_helper__(my_turn, best_utility, utility)
             else:
                 utility = __minimax_helper__(player, new_projected_game, time_left, cur_depth+1, max_depth, not my_turn)
-                utilities.append(utility)
+                best_utility = __utility_helper__(my_turn, best_utility, utility)
 
-        # Min or max the value depending on whether this is simulating AI turn or opponent turn
-        if my_turn:
-            return max(utilities)
+        return best_utility
+
+    def __utility_helper__(my_turn, best_utility, utility):
+        """
+            Args:
+                my_turn: boolean indicating who's turn it is
+                best_utility: best utility value found so far
+                utility: The most recently returned utility value
+            Returns:
+                float: New best utility value
+        """
+        new_best_utility = None
+        if best_utility is None:
+            new_best_utility = utility
+        elif my_turn:
+            new_best_utility = max([best_utility, utility])
         else:
-            return min(utilities)
+            new_best_utility = min([best_utility, utility])
+        return new_best_utility
 
     possible_actions = game.get_player_moves(player)
     action_utility_list = []
     for action in possible_actions:
         new_projected_game, is_over, winner = game.forecast_move(action)
-        # TODO add end game check i.e. is is_over True then what?
-        utility = __minimax_helper__(player, new_projected_game, time_left, 1, depth, not my_turn)
-        action_utility_list.append((action, utility))
+        if is_over:
+            utility = player.eval_fn.score(new_projected_game, player)
+            action_utility_list.append((action, utility))
+        else:
+            utility = __minimax_helper__(player, new_projected_game, time_left, 1, depth, not my_turn)
+            action_utility_list.append((action, utility))
 
     # Find move with highest utility value
-    from operator import itemgetter
     best_move_utility_pair = max(action_utility_list, key=itemgetter(1))
     return best_move_utility_pair[0], best_move_utility_pair[1]
 
