@@ -59,6 +59,30 @@ def beatRandom(yourAgent):
 
     print()
 
+
+def agentvsagent(agent1, agent2):
+    """
+    Pit two agents against eachother
+    """
+
+    print("")
+    try:
+        r = agent1()
+        p = agent2()
+        game = Board(r, p, 7, 7)
+        output_b = game.copy()
+        winner, move_history, termination = game.play_isolation(time_limit=1000, print_moves=True)
+        print("\n", winner, " has won. Reason: ", termination)
+        # Uncomment to see game
+        # print game_as_text(winner, move_history, termination, output_b)
+    except NotImplementedError:
+        print('CustomPlayer Test: Not Implemented')
+    except:
+        print('CustomPlayer Test: ERROR OCCURRED')
+        print(traceback.format_exc())
+
+    print()
+
 def minimaxTest(yourAgent, minimax_fn):
     """Example test to make sure
     your minimax works, using the
