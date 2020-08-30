@@ -310,31 +310,20 @@ def alphabeta(player, game, time_left, depth, alpha=float("-inf"), beta=float("i
             new_beta = min([best_utility, beta])
             return alpha, new_beta
 
-    ################################################################################# Main function body
-    MASTER_TIMEOUT_THRESHOLD = 7
     possible_actions = game.get_player_moves(player)
-    best_move_utility_pair = None
-    # Assumption is we'd never make it to depth 100,000 so we can treat it as infinity
-    for max_depth in range(1, 100000):
-        alpha = float("-inf")
-        action_utility_list = []
-        # Start basic alpha-beta search
-        for action in possible_actions:
-            new_projected_game, is_over, winner = game.forecast_move(action)
-            if is_over:
-                utility = player.eval_fn.score(new_projected_game, player)
-                action_utility_list.append((action, utility))
-            else:
-                utility = __alphabeta_helper__(player, new_projected_game, time_left, 1, max_depth, alpha, beta, not my_turn)
-                action_utility_list.append((action, utility))
-            alpha = max([utility, alpha])
-        # End basic alpha beta search
-        if time_left() < MASTER_TIMEOUT_THRESHOLD:
-            break
-        best_move_utility_pair = max(action_utility_list, key=itemgetter(1))
+    action_utility_list = []
+    for action in possible_actions:
+        new_projected_game, is_over, winner = game.forecast_move(action)
+        if is_over:
+            utility = player.eval_fn.score(new_projected_game, player)
+            action_utility_list.append((action, utility))
+        else:
+            utility = __alphabeta_helper__(player, new_projected_game, time_left, 1, depth, alpha, beta, not my_turn)
+            action_utility_list.append((action, utility))
+        alpha = max([utility, alpha])
 
     # Find move with highest utility value
-    # best_move_utility_pair = max(action_utility_list, key=itemgetter(1))
+    best_move_utility_pair = max(action_utility_list, key=itemgetter(1))
     return best_move_utility_pair[0], best_move_utility_pair[1]
 
 ######################################################################
@@ -343,9 +332,6 @@ def alphabeta(player, game, time_left, depth, alpha=float("-inf"), beta=float("i
 ######################################################################
 ##### CODE BELOW IS USED FOR RUNNING LOCAL TEST DON'T MODIFY IT ######
 #tests.minimaxTest(CustomPlayer, minimax)
-#tests.beatRandom(CustomPlayer)
-#tests.agentvsagentloop(CustomPlayer, CustomPlayerTest)
-#tests.agentvsagent(CustomPlayerTest, CustomPlayer)
 ################ END OF LOCAL TEST CODE SECTION ######################
 
 class CustomEvalFn:

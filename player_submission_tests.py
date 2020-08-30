@@ -60,6 +60,37 @@ def beatRandom(yourAgent):
     print()
 
 
+def agentvsagentloop(agent1, agent2):
+    """
+    Pit two agents against eachother
+    """
+
+    print("")
+    agent1_wins = 0
+    agent2_wins = 0
+    for i in range(20):
+        try:
+            r = agent1()
+            p = agent2()
+            game = Board(r, p, 7, 7)
+            output_b = game.copy()
+            winner, move_history, termination = game.play_isolation(time_limit=1000, print_moves=False)
+            print("\n", winner, " has won. Reason: ", termination)
+            if winner == "CustomPlayerTest - Q1":
+                agent1_wins += 1
+            else:
+                agent2_wins += 1
+            # Uncomment to see game
+            # print game_as_text(winner, move_history, termination, output_b)
+        except NotImplementedError:
+            print('CustomPlayer Test: Not Implemented')
+        except:
+            print('CustomPlayer Test: ERROR OCCURRED')
+            print(traceback.format_exc())
+
+    print("agent 2 win ration: ", agent2_wins / 20)
+    print()
+
 def agentvsagent(agent1, agent2):
     """
     Pit two agents against eachother
