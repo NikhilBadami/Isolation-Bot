@@ -68,7 +68,7 @@ def agentvsagentloop(agent1, agent2):
     print("")
     agent1_wins = 0
     agent2_wins = 0
-    for i in range(20):
+    for i in range(10):
         try:
             r = agent1()
             p = agent2()
@@ -88,7 +88,7 @@ def agentvsagentloop(agent1, agent2):
             print('CustomPlayer Test: ERROR OCCURRED')
             print(traceback.format_exc())
 
-    print("agent 2 win ration: ", agent2_wins / 20)
+    print("agent 2 win ration: ", agent2_wins / 10)
     print()
 
 def agentvsagent(agent1, agent2):

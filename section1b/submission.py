@@ -195,6 +195,8 @@ def minimax(player, game, time_left, depth, my_turn=True):
 ######## IF YOU WANT TO CALL OR TEST IT CREATE A NEW CELL ############
 ######################################################################
 ##### CODE BELOW IS USED FOR RUNNING LOCAL TEST DON'T MODIFY IT ######
+#tests.beatRandom(CustomPlayer)
+#tests.minimaxTest(CustomPlayer, minimax)
 ################ END OF LOCAL TEST CODE SECTION ######################
 
 def alphabeta(player, game, time_left, depth, alpha=float("-inf"), beta=float("inf"), my_turn=True):
@@ -256,18 +258,8 @@ def alphabeta(player, game, time_left, depth, alpha=float("-inf"), beta=float("i
                     best_utility = node_utility
                 break
             new_projected_game, is_over, winner = projected_game.forecast_move(action)
-            if is_over:
-                utility = player.eval_fn.score(new_projected_game, player)
-                # Evaluate this utility as if it was the other players turn, not the current players turn
-                # Reasoning is if the player loses they would have no moves left but if they win, continuing
-                # The search would lead to unnecessarily looking at extra nodes. This ensures an early cutoff
-                # In the event of an endgame state
-                best_utility = __utility_helper__(not my_turn, best_utility, utility)
-                # This check is still evaluated from the current players point of view. The above line of code
-                # Is treated as if the utility value was returned from calling the helper again
-            else:
-                utility = __alphabeta_helper__(player, new_projected_game, time_left, cur_depth+1, max_depth, alpha, beta, not my_turn)
-                best_utility = __utility_helper__(my_turn, best_utility, utility)
+            utility = __alphabeta_helper__(player, new_projected_game, time_left, cur_depth+1, max_depth, alpha, beta, not my_turn)
+            best_utility = __utility_helper__(my_turn, best_utility, utility)
 
             if (best_utility >= beta if my_turn else best_utility <= alpha):
                 break
@@ -320,13 +312,9 @@ def alphabeta(player, game, time_left, depth, alpha=float("-inf"), beta=float("i
         action_utility_list = []
         # Start basic alpha-beta search
         for action in possible_actions:
-            new_projected_game, is_over, winner = game.forecast_move(action)
-            if is_over:
-                utility = player.eval_fn.score(new_projected_game, player)
-                action_utility_list.append((action, utility))
-            else:
-                utility = __alphabeta_helper__(player, new_projected_game, time_left, 1, max_depth, alpha, beta, not my_turn)
-                action_utility_list.append((action, utility))
+            new_projected_game, _, __ = game.forecast_move(action)
+            utility = __alphabeta_helper__(player, new_projected_game, time_left, 1, max_depth, alpha, beta, not my_turn)
+            action_utility_list.append((action, utility))
             alpha = max([utility, alpha])
         # End basic alpha beta search
         if time_left() < MASTER_TIMEOUT_THRESHOLD:
