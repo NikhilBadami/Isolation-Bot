@@ -93,6 +93,7 @@ class CustomPlayer:
 ###################################################################
 
 from operator import itemgetter
+from random import shuffle
 
 def minimax(player, game, time_left, depth, my_turn=True):
     """Implementation of the minimax algorithm.
@@ -199,6 +200,36 @@ def minimax(player, game, time_left, depth, my_turn=True):
 #tests.minimaxTest(CustomPlayer, minimax)
 ################ END OF LOCAL TEST CODE SECTION ######################
 
+class HeapNode:
+    """
+        Class that will be used as a node in the min/max heap for node ordering
+    """
+
+    def __init__(self, utility, move, node_heap=None):
+        """
+            Args:
+                utility: utility value associatd with this move
+                move: The move the agent could make
+                node_heap: A min/max heap of all the moves possible from this node. Will be a max
+                           heap for a max node and vice versa. Will not be populated beyond depth 3
+        """
+        self.utility = utility
+        self.move = move
+        self.node_heap = node_heap
+
+    def __lt__(self, node=None):
+        """
+            Comparator for class. Used in min/max heap
+            Args:
+                node: Node being compared to
+            Returns:
+                boolean: whether or not the self node is smaller than the comparing node
+        """
+        if node is None:
+            # None objects are treated as infinity
+            return False
+        return self.utility < node.utility
+
 def alphabeta(player, game, time_left, depth, alpha=float("-inf"), beta=float("inf"), my_turn=True):
     """Implementation of the alphabeta algorithm.
 
@@ -218,7 +249,7 @@ def alphabeta(player, game, time_left, depth, alpha=float("-inf"), beta=float("i
         (tuple, int): best_move, val
     """
 
-    def __alphabeta_helper__(player, projected_game, time_left, cur_depth, max_depth, alpha, beta, my_turn):
+    def __alphabeta_helper__(player, projected_game, time_left, cur_depth, max_depth, alpha, beta, my_turn, heap):
         """
             Args:
                 player: same as alphabeta()
@@ -226,6 +257,7 @@ def alphabeta(player, game, time_left, depth, alpha=float("-inf"), beta=float("i
                 time_left: same as alphabeta()
                 cur_depth: current depth of search from root
                 max_depth: maximum depth searchable
+                heap (HeapNode): max/min heap specifying best moves
                 my_turn: same as alphabeta()
                 alpha: same as alphabeta()
                 beta: same as alphabeta()
@@ -235,11 +267,14 @@ def alphabeta(player, game, time_left, depth, alpha=float("-inf"), beta=float("i
         node_utility = player.eval_fn.score(projected_game, player)
 
         # Stop evaluating and immediately return if less than 6.7ms remains
-        TIMEOUT_THRESHOLD = 7 # TODO change this - for now we don't want to worry about time
+        TIMEOUT_THRESHOLD = 7
+
+        # Max depth for which to heapify children
+        MAX_HEAP_DEPTH = 3
 
         # If at maximum search depth, treat this node as a termination leaf and calculate utility
         if cur_depth >= max_depth or time_left() < TIMEOUT_THRESHOLD:
-            return node_utility
+            return node_utility, None
 
         possible_actions = None
         # Check AI moves or opponents moves depending on whose turn it is
@@ -249,23 +284,79 @@ def alphabeta(player, game, time_left, depth, alpha=float("-inf"), beta=float("i
             possible_actions = projected_game.get_opponent_moves(player)
         if len(possible_actions) == 0:
             # Assumption here is that the game is over
-            return node_utility
+            return node_utility, None
+
+        # Random order to take advantage of pruning
+        # shuffle(possible_actions)
 
         best_utility = None
-        for action in possible_actions:
-            if time_left() < TIMEOUT_THRESHOLD:
-                if best_utility is None:
-                    best_utility = node_utility
-                break
-            new_projected_game, is_over, winner = projected_game.forecast_move(action)
-            utility = __alphabeta_helper__(player, new_projected_game, time_left, cur_depth+1, max_depth, alpha, beta, not my_turn)
-            best_utility = __utility_helper__(my_turn, best_utility, utility)
+        new_heap = None
+        action_utility_list = []
 
-            if (best_utility >= beta if my_turn else best_utility <= alpha):
-                break
-            alpha, beta = __set_alphabeta__(my_turn, best_utility, alpha, beta)
+        idx = 0
+        if heap is not None:
+            for node in heap:
+                if time_left() < TIMEOUT_THRESHOLD:
+                    if best_utility is None:
+                        best_utility = node_utility
+                    break
+                new_projected_game, _, __ = projected_game.forecast_move(node.move)
+                utility, child_heap = __alphabeta_helper__(player, new_projected_game, time_left, cur_depth+1, max_depth, alpha, beta, not my_turn, node.node_heap)
+                new_node = HeapNode(utility, node.move, child_heap)
+                action_utility_list.append(new_node)
+                best_utility = __utility_helper__(my_turn, best_utility, utility)
+                idx += 1
 
-        return best_utility
+                if (best_utility >= beta if my_turn else best_utility <= alpha):
+                    break
+                alpha, beta = __set_alphabeta__(my_turn, best_utility, alpha, beta)
+        else:
+            for action in possible_actions:
+                if time_left() < TIMEOUT_THRESHOLD:
+                    if best_utility is None:
+                        best_utility = node_utility
+                    break
+                new_projected_game, _, __ = projected_game.forecast_move(action)
+                utility, child_heap = __alphabeta_helper__(player, new_projected_game, time_left, cur_depth+1, max_depth, alpha, beta, not my_turn, None)
+                new_node = HeapNode(utility, action, child_heap)
+                action_utility_list.append(new_node)
+                best_utility = __utility_helper__(my_turn, best_utility, utility)
+                idx += 1
+
+                if (best_utility >= beta if my_turn else best_utility <= alpha):
+                    break
+                alpha, beta = __set_alphabeta__(my_turn, best_utility, alpha, beta)
+
+        # Check to see if action_utilities need to be heapified
+        if cur_depth <= MAX_HEAP_DEPTH and time_left() >= TIMEOUT_THRESHOLD:
+            if my_turn:
+                # Is a max node
+                action_utility_list.sort(reverse=True)
+            else:
+                # Is a min node
+                action_utility_list.sort()
+            new_heap = action_utility_list
+            # Check to see if there are nodes that were pruned in case they need to be considered
+            # in the next iteration
+            if heap is not None:
+                if idx < len(heap):
+                    while idx < len(heap):
+                        if time_left() < TIMEOUT_THRESHOLD:
+                            break
+                        existing_node = heap[idx]
+                        new_node = HeapNode(existing_node.utility, existing_node.move)
+                        new_heap.append(new_node)
+                        idx += 1
+            else:
+                if idx < len(possible_actions):
+                    while idx < len(possible_actions):
+                        if time_left() < TIMEOUT_THRESHOLD:
+                            break
+                        new_node = HeapNode(0, possible_actions[idx])
+                        new_heap.append(new_node)
+                        idx += 1
+
+        return best_utility, new_heap
 
     def __utility_helper__(my_turn, best_utility, utility):
         """
@@ -306,23 +397,38 @@ def alphabeta(player, game, time_left, depth, alpha=float("-inf"), beta=float("i
     MASTER_TIMEOUT_THRESHOLD = 7
     possible_actions = game.get_player_moves(player)
     best_move_utility_pair = None
+    max_heap = None
     # Assumption is we'd never make it to depth 100,000 so we can treat it as infinity
     for max_depth in range(1, 100000):
         alpha = float("-inf")
         action_utility_list = []
+
         # Start basic alpha-beta search
-        for action in possible_actions:
-            new_projected_game, _, __ = game.forecast_move(action)
-            utility = __alphabeta_helper__(player, new_projected_game, time_left, 1, max_depth, alpha, beta, not my_turn)
-            action_utility_list.append((action, utility))
-            alpha = max([utility, alpha])
+        if max_heap is not None:
+            for node in max_heap:
+                new_projected_game, _, __ = game.forecast_move(node.move)
+                utility, heap = __alphabeta_helper__(player, new_projected_game, time_left, 1, max_depth, alpha, beta, not my_turn, node.node_heap)
+                new_node = HeapNode(utility, node.move, heap)
+                action_utility_list.append(new_node)
+                alpha = max([utility, alpha])
+        else:
+            for action in possible_actions:
+                new_projected_game, _, __ = game.forecast_move(action)
+                utility, heap = __alphabeta_helper__(player, new_projected_game, time_left, 1, max_depth, alpha, beta, not my_turn, None)
+                new_node = HeapNode(utility, action, heap)
+                action_utility_list.append(new_node)
+                alpha = max([utility, alpha])
         # End basic alpha beta search
+
         if time_left() < MASTER_TIMEOUT_THRESHOLD:
             break
-        best_move_utility_pair = max(action_utility_list, key=itemgetter(1))
 
-    # Find move with highest utility value
-    # best_move_utility_pair = max(action_utility_list, key=itemgetter(1))
+        # Create "max heap" out of action_utility_pair list
+        action_utility_list.sort(reverse=True)
+        max_heap = action_utility_list
+        best_move = max_heap[0]
+        best_move_utility_pair = (best_move.move, best_move.utility)
+
     return best_move_utility_pair[0], best_move_utility_pair[1]
 
 ######################################################################
@@ -332,7 +438,6 @@ def alphabeta(player, game, time_left, depth, alpha=float("-inf"), beta=float("i
 ##### CODE BELOW IS USED FOR RUNNING LOCAL TEST DON'T MODIFY IT ######
 #tests.minimaxTest(CustomPlayer, minimax)
 #tests.beatRandom(CustomPlayer)
-#tests.agentvsagentloop(CustomPlayer, CustomPlayerTest)
 #tests.agentvsagent(CustomPlayerTest, CustomPlayer)
 ################ END OF LOCAL TEST CODE SECTION ######################
 
