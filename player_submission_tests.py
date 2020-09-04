@@ -68,13 +68,13 @@ def agentvsagentloop(agent1, agent2):
     print("")
     agent1_wins = 0
     agent2_wins = 0
-    for i in range(5):
+    for i in range(10):
         try:
             r = agent1()
             p = agent2()
             game = Board(r, p, 7, 7)
             output_b = game.copy()
-            winner, move_history, termination = game.play_isolation(time_limit=1000, print_moves=True)
+            winner, move_history, termination = game.play_isolation(time_limit=1000, print_moves=False)
             print("\n", winner, " has won. Reason: ", termination)
             if winner == "CustomPlayerTest - Q1":
                 agent1_wins += 1

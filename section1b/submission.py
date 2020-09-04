@@ -44,6 +44,43 @@ class OpenMoveEvalFn:
 ##### CODE BELOW IS USED FOR RUNNING LOCAL TEST DON'T MODIFY IT ######
 ################ END OF LOCAL TEST CODE SECTION ######################
 
+class CustomEvalFn:
+    def __init__(self):
+        pass
+
+    def score(self, game, my_player=None):
+        """Score the current game state.
+
+        Custom evaluation function that acts however you think it should. This
+        is not required but highly encouraged if you want to build the best
+        AI possible.
+
+        Args:
+            game (Board): The board and game state.
+            my_player (Player object): This specifies which player you are.
+
+        Returns:
+            float: The current state's score, based on your own heuristic.
+        """
+
+        my_player_moves = game.get_player_moves(my_player)
+        # Check to see if the player has lost. If so, never pick this move
+        if len(my_player_moves) == 0:
+            return float("-inf")
+
+        opp_moves = game.get_opponent_moves(my_player)
+        # Check to see if the opponent has lost. If so, we always want this move
+        if len(opp_moves) == 0:
+            return float("inf")
+
+        number_of_moves = len(my_player_moves) - len(opp_moves)
+        return number_of_moves
+
+######################################################################
+############ DON'T WRITE ANY CODE OUTSIDE THE CLASS! #################
+######## IF YOU WANT TO CALL OR TEST IT CREATE A NEW CELL ############
+######################################################################
+
 class CustomPlayer:
     # TODO: finish this class!
     """Player that chooses a move using your evaluation function
@@ -51,7 +88,7 @@ class CustomPlayer:
     You must finish and test this player to make sure it properly
     uses minimax and alpha-beta to return a good move."""
 
-    def __init__(self, search_depth=4, eval_fn=OpenMoveEvalFn()):
+    def __init__(self, search_depth=4, eval_fn=CustomEvalFn()):
         """Initializes your player.
 
         if you find yourself with a superior eval function, update the default
@@ -440,30 +477,3 @@ def alphabeta(player, game, time_left, depth, alpha=float("-inf"), beta=float("i
 #tests.beatRandom(CustomPlayer)
 #tests.agentvsagent(CustomPlayerTest, CustomPlayer)
 ################ END OF LOCAL TEST CODE SECTION ######################
-
-class CustomEvalFn:
-    def __init__(self):
-        pass
-
-    def score(self, game, my_player=None):
-        """Score the current game state.
-
-        Custom evaluation function that acts however you think it should. This
-        is not required but highly encouraged if you want to build the best
-        AI possible.
-
-        Args:
-            game (Board): The board and game state.
-            my_player (Player object): This specifies which player you are.
-
-        Returns:
-            float: The current state's score, based on your own heuristic.
-        """
-
-        # TODO: finish this function!
-        raise NotImplementedError
-
-######################################################################
-############ DON'T WRITE ANY CODE OUTSIDE THE CLASS! #################
-######## IF YOU WANT TO CALL OR TEST IT CREATE A NEW CELL ############
-######################################################################
